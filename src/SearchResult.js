@@ -36,15 +36,22 @@ function get_table_element(data){
 
     let a = document.createElement("a");
     a.href = data.url;
-    a.innerHTML = data.nick;
+
+    let text = document.createElement("a");
+    text.innerHTML = `${data.nick}<br>價格: ${data.price.P}`;
+
+    let br = document.createElement("br");
 
     let img = document.createElement("img");
     img.src = new URL(data.pic.S, IMG_URL).href; // 刪除鈕
     img.alt = "商品圖片";
     img.title = "商品圖片";
+    img.classList.add("prod_img");
 
+    a.appendChild(img);
+    a.appendChild(br);
+    a.appendChild(text);
     td.appendChild(a);
-    td.appendChild(img);
     tr.appendChild(td);
     return tr
 }
@@ -71,26 +78,26 @@ function get_data(cid, pid, data){
 
 function intersection(){
     // 交集
-    let temp = {};
-    let result;
+    let result = {};
+    let temp;
     for (let cid in crawler_data){
         console.log(`cid: ${cid}`);
-        result = {};
-        if (Object.keys(temp).length === 0){
+        temp = {};
+        if (Object.keys(result).length === 0){
             for (let i = 0; i < crawler_data[cid].length; i = i + 1){
                 let pid = get_id(crawler_data[cid][i]);
-                temp[pid] = get_data(cid, pid, crawler_data[cid][i]);
+                result[pid] = get_data(cid, pid, crawler_data[cid][i]);
             }
-            console.log(temp);
+            console.log(result);
         }else{
             for (let i = 0; i < crawler_data[cid].length; i = i + 1){
                 let pid = get_id(crawler_data[cid][i]);
-                if (pid in temp){
-                    result[pid] = get_data(cid, pid, crawler_data[cid][i]);
+                if (pid in result){
+                    temp[pid] = get_data(cid, pid, crawler_data[cid][i]);
                 }
             }
-            console.log(result);
-            temp = result;
+            console.log(temp);
+            result = temp;
         }
     }
     return result;
