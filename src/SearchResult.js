@@ -39,7 +39,7 @@ function get_table_element(data){
     a.innerHTML = data.nick;
 
     let img = document.createElement("img");
-    img.src = new URL(data.url, IMG_URL).href; // 刪除鈕
+    img.src = new URL(data.pic.S, IMG_URL).href; // 刪除鈕
     img.alt = "商品圖片";
     img.title = "商品圖片";
 
