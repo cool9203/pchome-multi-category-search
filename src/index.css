@@ -1,0 +1,57 @@
+* { /* 全置中 */
+    text-align: center;
+}
+
+#url_shower_refresh, .delete_img {
+    width: 0.8em;
+    height: auto;
+    cursor: pointer;
+}
+
+#url_shower {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#search_button {
+    cursor: pointer;
+}
+
+#search_button:hover {
+    background-color: rgba(0, 255, 213, 0.452);
+}
+
+.delete_img:hover{
+    background-color: rgba(240, 94, 126, 0.452);;
+}
+
+/* 頁面相關 */
+
+.first, .second { /* 固定後面的距離 */
+    margin-bottom: 2em;
+}
+
+.first { /* 第一個割版 row 的大小 */
+    height: 20%;
+}
+
+.second { /* 第二個割版 row 的大小 */
+    height: 70%;
+}
+
+/* table */
+
+table { /* table 框線 */
+    border: 1px solid;
+}
+
+table tr td { /* table td 上框線 */
+    border-top: 1px solid;
+}
+
+/* 其它 */
+
+footer a::after { /* 幫助 footer a 可以自動換行, 不用再自己加 <br> */
+    content: '\A';
+    white-space: pre;
+}
