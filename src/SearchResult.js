@@ -1,16 +1,18 @@
 // pchome parameter
 const REPLACE_CATEGORY = "<category_id>";
 const REPLACE_PROD = "<prod_id>";
+const REPLACE_OFFSET = "<offset>";
 const PROD_LIMIT = 36;
 const PROD_COUNT_API_URL = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod/count&_callback=api_prod_count_callback`;
-const PROD_API_URL = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod&offset=0&limit=${PROD_LIMIT}&_callback=api_prod_callback`;
-const PROD_API_URL_RELEASE = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod&offset=0&limit=${PROD_LIMIT}&_callback=api_prod_callback_release`;
+const PROD_API_URL = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod&offset=${REPLACE_OFFSET}&limit=${PROD_LIMIT}&_callback=api_prod_callback`;
+const PROD_API_URL_RELEASE = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod&offset=${REPLACE_OFFSET}&limit=${PROD_LIMIT}&_callback=api_prod_callback_release`;
 const PROD_URL = `https://24h.pchome.com.tw/prod/v1/${REPLACE_PROD}?fq=/S/${REPLACE_CATEGORY}`;
 const IMG_URL = "https://cs-a.ecimg.tw";
 const SLEEP_MS = 100;
 
 // frontend id
 const PROD_SHOWER_ID = "prod_shower_content";
+const RESULT_COUNT_ID = "result_count";
 
 // sleep function
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -22,7 +24,9 @@ let prod_count = null;
 
 
 function show(all_data){
+    let result_count = document.getElementById(RESULT_COUNT_ID);
     let shower = document.getElementById(PROD_SHOWER_ID);
+    result_count.textContent = `總共找到${Object.keys(all_data).length}個結果`;
     for (let id in all_data){
         let tr = get_table_element(all_data[id]);
         shower.appendChild(tr);
@@ -143,14 +147,14 @@ function api_prod_callback_release(data){
 
 function api_prod_count_callback(count){
     prod_count = count;
-    count = Math.ceil(count / PROD_LIMIT)
-    for (let i = 0; i < count ; i = i + 1){
+    let epochs = Math.ceil(count / PROD_LIMIT)
+    for (let i = 0; i < epochs ; i = i + 1){
         let prod_url = null;
 
-        if (i != count -1){
-            prod_url = PROD_API_URL.replace(REPLACE_CATEGORY, category_id);
+        if (i != epochs - 1){
+            prod_url = PROD_API_URL.replace(REPLACE_CATEGORY, category_id).replace(REPLACE_OFFSET, i * PROD_LIMIT);
         }else{
-            prod_url = PROD_API_URL_RELEASE.replace(REPLACE_CATEGORY, category_id);
+            prod_url = PROD_API_URL_RELEASE.replace(REPLACE_CATEGORY, category_id).replace(REPLACE_OFFSET, i * PROD_LIMIT);
         }
         import_js(prod_url);
     }
