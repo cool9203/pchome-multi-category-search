@@ -1,7 +1,7 @@
 {
     "name": "Pchome multi category search",
     "description": "提供可以選擇多個 pchome 側欄主題的 chrome 插件",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "manifest_version": 3,
     "background": {
         "service_worker": "background.js"
