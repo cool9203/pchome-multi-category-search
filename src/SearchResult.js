@@ -6,9 +6,12 @@ const PROD_LIMIT = 36;
 const PROD_COUNT_API_URL = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod/count&_callback=api_prod_count_callback`;
 const PROD_API_URL = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod&offset=${REPLACE_OFFSET}&limit=${PROD_LIMIT}&_callback=api_prod_callback`;
 const PROD_API_URL_RELEASE = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod&offset=${REPLACE_OFFSET}&limit=${PROD_LIMIT}&_callback=api_prod_callback_release`;
+const PROD_STATUS_API_URL = `https://ecapi-cdn.pchome.com.tw/ecshop/prodapi/v2/prod/button&id=${REPLACE_PROD}&fields=Id,Qty,ButtonType,Price,isPrimeOnly,Device&_callback=add_prod_status`
 const PROD_URL = `https://24h.pchome.com.tw/prod/v1/${REPLACE_PROD}?fq=/S/${REPLACE_CATEGORY}`;
 const IMG_URL = "https://cs-a.ecimg.tw";
 const SLEEP_MS = 100;
+
+// TODO: 用 PROD_QTY_API_URL 拿貨態
 
 // frontend id
 const PROD_SHOWER_ID = "prod_shower_content";
@@ -28,14 +31,37 @@ function show(all_data){
     let shower = document.getElementById(PROD_SHOWER_ID);
     result_count.textContent = `總共找到${Object.keys(all_data).length}個結果`;
     for (let id in all_data){
-        let tr = get_table_element(all_data[id]);
+        let tr = get_table_element(all_data[id], id);
         shower.appendChild(tr);
     }
 }
 
 
-function get_table_element(data){
+function add_prod_status(all_data){
+    for (let i = 0; i < all_data.length; i = i + 1){
+        let data = all_data[i];
+        let id = data.Id;
+        let qty = data.Qty;
+
+        let a = document.querySelector(`#${id} td a`);
+        let br = document.createElement("br");
+        let text = document.createElement("a");
+        text.innerHTML = `剩餘${qty}件`;
+
+        if (qty <= 0){
+            a.classList.add("no_stock");
+        }
+
+        a.appendChild(br);
+        a.appendChild(text);
+    }
+}
+
+
+function get_table_element(data, id){
     let tr = document.createElement("tr");
+    tr.id = id;
+
     let td = document.createElement("td");
 
     let a = document.createElement("a");
@@ -225,6 +251,18 @@ async function run(){
     // 全部處理完時要做的事
     result = intersection();
     show(result);
+
+    //顯示貨態, 要先取得所有 prod id
+    let prod_string = "";
+    for (let id in result){
+        if (prod_string.length === 0){
+            prod_string += id;
+        }else{
+            prod_string += `,${id}`;
+        }
+    }
+    let prod_status_url = PROD_STATUS_API_URL.replace(REPLACE_PROD, prod_string);
+    import_js(prod_status_url);
 }
 
 run();

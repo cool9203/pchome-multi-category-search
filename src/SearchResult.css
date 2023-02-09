@@ -2,9 +2,13 @@
     text-align: center;
 }
 
+.no_stock {
+    opacity: 0.3;
+}
+
 .prod_img {
-    margin-top: 2em;
-    width: 240px;
+    margin-top: 1em;
+    width: 10em;
     height: auto;
 }
 
