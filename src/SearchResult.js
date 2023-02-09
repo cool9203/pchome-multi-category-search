@@ -24,7 +24,7 @@ const PROD_URL = `https://24h.pchome.com.tw/prod/v1/${REPLACE_PROD}?fq=/S/${REPL
 const IMG_URL = "https://cs-a.ecimg.tw";
 
 // Program setting
-const SLEEP_MS = 100;
+const SLEEP_MS = 100; // 多久檢查一次商品資料是否爬完, 設定越短整個程式跑越快, 但會受限於 pchome API response 速度
 
 // TODO: 用 PROD_QTY_API_URL 拿貨態
 
@@ -308,15 +308,48 @@ function query_string(url)
 }
 
 
+function url_array_to_id_array(all_url_array){
+    let all_id_array = [];
+    for (let i = 0; i < all_url_array.length; i = i + 1){
+        let path_name = new URL(all_url_array[i]).pathname.split("/");
+        let id = path_name[path_name.length - 1];
+        all_id_array.push(id);
+    }
+    return all_id_array;
+}
+
+
 /** 
  * 該程式的進入點
  */ 
 async function run(){
-    const all_id_array = query_string(window.location).all_id_array.split(",");  // 嘗試從 url param 取得
+    // 嘗試從 url param 取得 id array
+    let all_url_array, all_id_array
+    try{
+        // 從2個不同變數名嘗試取得, all_id_array & all_id
+        try{
+            all_id_array = query_string(window.location).all_id_array.split(",");
+        }
+        catch{
+            all_id_array = query_string(window.location).all_id.split(",");
+        }
+    }catch{
+        // 從2個不同變數名嘗試取得, all_url_array & all_url
+        try{
+            all_url_array = query_string(window.location).all_url_array.split(",");
+        }
+        catch{
+            all_url_array = query_string(window.location).all_url.split(",");
+        }
+        all_id_array = url_array_to_id_array(all_url_array);
+    }
+    
+    // 使用 id array 的 id 爬取商品資料到 crawler_data
     for (let i = 0; i < all_id_array.length; i = i + 1){
         if (i == 0){
             console.log("Get all_id_array from url param");
         }
+        // 使用到互斥鎖, 防止資料競爭問題
         while (true){
             if (mutex_lock){
                 mutex_lock = false;
@@ -327,7 +360,7 @@ async function run(){
         }
     }
 
-    // wait
+    // 等待互斥鎖被 release
     while (true){
         if (mutex_lock){
             break;
