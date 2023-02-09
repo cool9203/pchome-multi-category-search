@@ -1,0 +1,37 @@
+{
+    "name": "Pchome multi category search",
+    "description": "提供可以選擇多個 pchome 側欄主題的 chrome 插件",
+    "version": "0.0.0",
+    "manifest_version": 3,
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://24h.pchome.com.tw/region/*",
+                "https://24h.pchome.com.tw/store/*"
+        ],
+            "js": ["multi_category.js"],
+            "runAt": "document_end"
+        }
+    ],
+    "permissions": ["storage", "activeTab", "scripting", "tabs", "contextMenus"],
+    "host_permissions": ["https://24h.pchome.com.tw/region/*"],
+    "action": {
+        "default_popup": "popup/popup.html",
+        "default_icon": {
+            "16": "/images/16.png",
+            "32": "/images/32.png",
+            "48": "/images/48.png",
+            "128": "/images/128.png"
+        }
+    },
+    "icons": {
+        "16": "/images/16.png",
+        "32": "/images/32.png",
+        "48": "/images/48.png",
+        "128": "/images/128.png"
+    },
+    "options_page": "options/options.html"
+}
