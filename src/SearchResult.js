@@ -26,8 +26,6 @@ const IMG_URL = "https://cs-a.ecimg.tw";
 // Program setting
 const SLEEP_MS = 100; // 多久檢查一次商品資料是否爬完, 設定越短整個程式跑越快, 但會受限於 pchome API response 速度
 
-// TODO: 用 PROD_QTY_API_URL 拿貨態
-
 // Frontend element id
 const PROD_SHOWER_ID = "prod_shower_content";
 const RESULT_COUNT_ID = "result_count";
@@ -38,8 +36,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Program variable
 let crawler_data = {};
 let category_id = null;
+let all_intersection_id_array = [];
+let all_union_id_array = [];
 let mutex_lock = true;
 let prod_count = null;
+
 
 /** 
  * 將 all_data 顯示到網頁前端上
@@ -79,6 +80,7 @@ function add_prod_status(all_data){
         a.appendChild(text);
     }
 }
+
 
 /** 
  * 取得網頁前端的 table 元素, 應該包含一系列的元素, 如 <tr><td><div><a></...>
@@ -148,19 +150,23 @@ function get_data(cid, pid, data){
 /** 
  * 取得兩主題的商品交集
  * 請注意, 依賴 crawler_data 這變數
+ * @params {object} result 先前聯集完的結果
  * @returns object 交集後的結果, 資料型態為: {get_id(): get_data()}
  */ 
-function intersection(){
-    let result = {};
-    let temp;
+function intersection(result){
+    let first_empty = Object.keys(result).length === 0 ? true : false;
     for (let cid in crawler_data){
-        console.log(`cid: ${cid}`);
-        temp = {};
-        if (Object.keys(result).length === 0){
+        if (all_intersection_id_array.indexOf(cid) < 0){
+            continue;
+        }
+
+        let temp = {};
+        if (Object.keys(result).length === 0 && first_empty){
             for (let i = 0; i < crawler_data[cid].length; i = i + 1){
                 let pid = get_id(crawler_data[cid][i]);
                 result[pid] = get_data(cid, pid, crawler_data[cid][i]);
             }
+            first_empty = false;
             console.log(result);
         }else{
             for (let i = 0; i < crawler_data[cid].length; i = i + 1){
@@ -179,12 +185,22 @@ function intersection(){
 
 /** 
  * 取得兩主題的商品聯集
- * TODO: 需要實作, 但不確定會使用到的地方
  * 請注意, 依賴 crawler_data 這變數
  * @returns object 交集後的結果, 資料型態為: {get_id(): get_data()}
  */ 
 function union(){
+    let result = {};
+    for (let cid in crawler_data){
+        if (all_union_id_array.indexOf(cid) < 0){
+            continue;
+        }
 
+        for (let i = 0; i < crawler_data[cid].length; i = i + 1){
+            let pid = get_id(crawler_data[cid][i]);
+            result[pid] = get_data(cid, pid, crawler_data[cid][i]);
+        }
+    }
+    return result;
 }
 
 
@@ -308,6 +324,11 @@ function query_string(url)
 }
 
 
+/** 
+ * 轉換 url to id
+ * @params {array} url array
+ * @returns array id array
+ */ 
 function url_array_to_id_array(all_url_array){
     let all_id_array = [];
     for (let i = 0; i < all_url_array.length; i = i + 1){
@@ -320,29 +341,72 @@ function url_array_to_id_array(all_url_array){
 
 
 /** 
+ * 嘗試取得 url 的 query 變數數值
+ * @params {array} variable_name_array 想要拿的變數名 array
+ * @params {type} _default 任何型態的值, 當拿不到這值時需要拿它當作預設值, 可以不輸入該值
+ * @params {type} split_token 預設是 pass array 型態過來, 所以要 split 成 array
+ * @returns array/str 取得的變數對應數值
+ */ 
+function try_get_query_variable_value(variable_name_array, _default, split_token=","){
+    let value = undefined;
+    for (let i = 0; i < variable_name_array.length; i = i + 1){
+        let variable_name = variable_name_array[i];
+
+        try{
+            value = query_string(window.location)[variable_name];
+        }
+        catch{
+            try{
+                value = query_string(window.location)[variable_name];
+            }
+            catch{}
+        }
+
+        if (value !== undefined){
+            console.log(`value: ${value}`);
+            if (split_token !== null ** split_token !== undefined && split_token.length > 0){
+                value = value.split(split_token);
+            }
+            break;
+        }
+    }
+
+    if (value === undefined){
+        value = _default;
+    }
+    
+    return value;
+}
+
+
+/** 
  * 該程式的進入點
  */ 
 async function run(){
-    // 嘗試從 url param 取得 id array
-    let all_url_array, all_id_array
-    try{
-        // 從2個不同變數名嘗試取得, all_id_array & all_id
-        try{
-            all_id_array = query_string(window.location).all_id_array.split(",");
-        }
-        catch{
-            all_id_array = query_string(window.location).all_id.split(",");
-        }
-    }catch{
-        // 從2個不同變數名嘗試取得, all_url_array & all_url
-        try{
-            all_url_array = query_string(window.location).all_url_array.split(",");
-        }
-        catch{
-            all_url_array = query_string(window.location).all_url.split(",");
-        }
+    // 從 url param 取得所有參數
+    let all_url_array = try_get_query_variable_value(["all_url_array", "all_url", "url"], null);
+    let all_id_array = try_get_query_variable_value(["all_id_array", "all_id", "id"], null);
+    all_intersection_id_array = try_get_query_variable_value(["all_intersection_id_array", "all_intersection_id", "all_intersection_array", "all_intersection", "intersection", "inter"], []);
+    all_union_id_array = try_get_query_variable_value(["all_union_id_array", "all_union_id", "all_union_array", "all_union", "union"], []);
+
+    // 如果 pass url 過來, 那需要解析
+    if (all_url_array !== null && all_id_array === null){
         all_id_array = url_array_to_id_array(all_url_array);
+    }else if (all_id_array === null){
+        all_id_array = [];
+        all_id_array.push(...all_intersection_id_array);
+        all_id_array.push(...all_union_id_array);
     }
+    
+    // fit 舊版本, 只有交集功能但沒有聯集功能
+    if (all_intersection_id_array.length === 0 && all_union_id_array.length === 0){
+        all_intersection_id_array = all_id_array;
+    }
+
+    console.log(`all_url_array: ${all_url_array}`);
+    console.log(`all_id_array: ${all_id_array}`);
+    console.log(`all_intersection_id_array: ${all_intersection_id_array}`);
+    console.log(`all_union_id_array: ${all_union_id_array}`);
     
     // 使用 id array 的 id 爬取商品資料到 crawler_data
     for (let i = 0; i < all_id_array.length; i = i + 1){
@@ -369,7 +433,8 @@ async function run(){
     }
 
     // 全部處理完時要做的事
-    result = intersection();
+    result = union();
+    result = intersection(result);
     show(result);
 
     //顯示貨態, 要先取得所有 prod id
@@ -384,5 +449,6 @@ async function run(){
     let prod_status_url = PROD_STATUS_API_URL.replace(REPLACE_PROD, prod_string);
     import_js(prod_status_url);
 }
+
 
 run();
