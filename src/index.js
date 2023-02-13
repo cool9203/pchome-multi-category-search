@@ -6,19 +6,33 @@ const SEARCH_BUTTON_ID = "search_button";
 const URL_INPUT_ID = "url_input";
 
 // SearchResult 相關設定
-const SEARCH_RESULT_VARIABLE_NAME = "all_id_array";
+const INTERSECTION_VARIABLE_NAME = "all_intersection";
+const UNION_VARIABLE_NAME = "all_union";
 
-let all_url_array = [];
+let all_intersection_array = [];
+let all_union_array = [];
 
-function url_delete_event(url){
-    let index = all_url_array.indexOf(url);
+
+function intersection_delete_event(url){
+    _url_delete_event(url, all_intersection_array);
+}
+
+
+function union_delete_event(url){
+    _url_delete_event(url, all_union_array);
+}
+
+
+function _url_delete_event(url, array){
+    let index = array.indexOf(url);
     if (index !== -1){
-        all_url_array.splice(index, 1);
+        array.splice(index, 1);
         document.getElementById(URL_SHOWER_CONTENT_ID).children[index + 1].remove();
     }
 }
 
-function get_table_element(url){
+
+function get_table_element(url, delete_event){
     let tr = document.createElement("tr");
     let td = document.createElement("td");
 
@@ -31,13 +45,14 @@ function get_table_element(url){
     img.alt = "刪除該列網址";
     img.title = "刪除該列網址";
     img.classList.add("delete_img");
-    img.onclick = () => {url_delete_event(url)};
+    img.onclick = () => {delete_event(url)};
 
     td.appendChild(a);
     td.appendChild(img);
     tr.appendChild(td);
     return tr
 }
+
 
 function add_url_submit(){
     let url_shower_content = document.getElementById(URL_SHOWER_CONTENT_ID);
@@ -47,15 +62,16 @@ function add_url_submit(){
         let url = url_input.value;
         url_input.value = "";
 
-        if (all_url_array.indexOf(url) == -1){
-            all_url_array.push(url);
+        if (all_intersection_array.indexOf(url) == -1){
+            all_intersection_array.push(url);
 
-            let tr = get_table_element(url);
+            let tr = get_table_element(url, intersection_delete_event);
             url_shower_content.appendChild(tr);
         }
         
     }
 }
+
 
 function url_shower_refresh(){
     let url_shower_content = document.getElementById(URL_SHOWER_CONTENT_ID);
@@ -68,18 +84,19 @@ function url_shower_refresh(){
         }
 
         // 加入 url
-        for (let i = 0; i < all_url_array.length; i = i + 1){
-            let url = all_url_array[i];
-            let tr = get_table_element(url);
+        for (let i = 0; i < all_intersection_array.length; i = i + 1){
+            let url = all_intersection_array[i];
+            let tr = get_table_element(url, intersection_delete_event);
             url_shower_content.appendChild(tr);
         }
     }
 }
 
+
 function search_button(){
     let query = "";
-    for (let i = 0; i < all_url_array.length; i = i + 1){
-        let path_name = new URL(all_url_array[i]).pathname.split("/");
+    for (let i = 0; i < all_intersection_array.length; i = i + 1){
+        let path_name = new URL(all_intersection_array[i]).pathname.split("/");
         let id = path_name[path_name.length - 1];
         if (query === ""){
             query += id;
@@ -88,11 +105,11 @@ function search_button(){
             query += `,${id}`;
         }
     }
-    window.location.href = `SearchResult.html?${SEARCH_RESULT_VARIABLE_NAME}=${query}`;
+    window.location.href = `SearchResult.html?${INTERSECTION_VARIABLE_NAME}=${query}`;
 }
 
-/* 監聽事件 */
 
+/* 監聽事件 */
 document.getElementById(ADD_URL_SUBMIT_ID).addEventListener("click", add_url_submit);
 document.getElementById(URL_SHOWER_REFRESH_ID).addEventListener("click", url_shower_refresh);
 document.getElementById(SEARCH_BUTTON_ID).addEventListener("click", search_button);
