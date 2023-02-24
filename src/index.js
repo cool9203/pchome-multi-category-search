@@ -72,6 +72,11 @@ function _add_url_submit(url_input_id, shower_content_id, delete_event){
 }
 
 
+/** 
+ * 取得元素裡的所有 url
+ * @params {string} shower_content_id 要取得的元素 id
+ * @returns array url array
+ */ 
 function _get_shower_content_url(shower_content_id){
     let url_array = [];
     let shower = document.getElementById(shower_content_id);
@@ -82,6 +87,11 @@ function _get_shower_content_url(shower_content_id){
 }
 
 
+/** 
+ * 將 url_array 轉成 string
+ * @params {array} url_array 
+ * @returns string id string
+ */ 
 function _get_url_id_string(url_array){
     let id_string = "";
     for (let i = 0; i < url_array.length; i = i + 1){
