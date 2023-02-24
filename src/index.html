@@ -11,30 +11,47 @@
 
         <div class="first">
             <input id="url_input">
-            <button id="add_url_submit">增加網址</button>
+            <button id="search_button">搜尋這些網址</button>
+            <br><br>
+            <button id="add_union_url_submit">增加聯集網址</button>
+            <button id="add_intersection_url_submit">增加交集網址</button>
         </div>
 
         <div class="second">
-            <table id="url_shower">
-                <thead>
-                    <tr>
-                        <th>
-                            要搜尋的url
-                            <img src="images/refresh.png" alt="refresh" title="更新網址, 若沒有更新請點選" id="url_shower_refresh"></img>
-                        </th>
-                    </tr>
-                </thead>
+            <div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>
+                                    要聯集的url
+                                </th>
+                            </tr>
+                        </thead>
+            
+                        <tbody id="union_url_shower_content">
+                        </tbody>
+                    </table>
+                </div>
     
-                <tbody id="url_shower_content">
-                    <tr>
-                        <td id="search_button">搜尋這些網址</td>
-                    </tr>
-                </tbody>
-            </table>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>
+                                    要交集的url
+                                </th>
+                            </tr>
+                        </thead>
+            
+                        <tbody id="intersection_url_shower_content">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <footer>
-            <a href="https://www.flaticon.com/free-icons/refresh" title="refresh icons">Refresh icons created by Roundicons - Flaticon</a>
             <a href="https://www.flaticon.com/free-icons/cross" title="cross icons">Cross icons created by Pixelmeetup - Flaticon</a>
         </footer>
         <script src="index.js"></script>

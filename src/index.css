@@ -13,14 +13,6 @@
     margin-right: auto;
 }
 
-#search_button {
-    cursor: pointer;
-}
-
-#search_button:hover {
-    background-color: rgba(0, 255, 213, 0.452);
-}
-
 .delete_img:hover{
     background-color: rgba(240, 94, 126, 0.452);;
 }
@@ -40,6 +32,10 @@
 }
 
 /* table */
+
+div.table-container {
+    display: inline-block;
+}
 
 table { /* table 框線 */
     border: 1px solid;
