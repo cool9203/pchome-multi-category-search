@@ -364,7 +364,7 @@ function try_get_query_variable_value(variable_name_array, _default, split_token
             catch{}
         }
 
-        if (value !== undefined){
+        if (value !== undefined && value.length > 0){
             console.log(`value: ${value}`);
             if (split_token !== null ** split_token !== undefined && split_token.length > 0){
                 value = value.split(split_token);
@@ -373,7 +373,7 @@ function try_get_query_variable_value(variable_name_array, _default, split_token
         }
     }
 
-    if (value === undefined){
+    if (value === undefined || value.length === 0){
         value = _default;
     }
     
@@ -403,6 +403,13 @@ async function run(){
     // fit 舊版本, 只有交集功能但沒有聯集功能
     if (all_intersection_id_array.length === 0 && all_union_id_array.length === 0){
         all_intersection_id_array = all_id_array;
+    }
+
+    // 如果全部都要交集, 那需要有一個當作聯集, 以便以他為基礎再去交集
+    if (all_union_id_array.length === 0){
+        console.log("aaa");
+        all_union_id_array.push(all_intersection_id_array[0]);
+        all_intersection_id_array.splice(0, 1);
     }
 
     console.log(`all_url_array: ${all_url_array}`);
