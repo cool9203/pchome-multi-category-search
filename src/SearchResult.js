@@ -19,7 +19,7 @@ const PROD_LIMIT = 36;
 const PROD_COUNT_API_URL = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod/count&_callback=api_prod_count_callback`;
 const PROD_API_URL = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod&offset=${REPLACE_OFFSET}&limit=${PROD_LIMIT}&_callback=api_prod_callback`;
 const PROD_API_URL_RELEASE = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod&offset=${REPLACE_OFFSET}&limit=${PROD_LIMIT}&_callback=api_prod_callback_release`;
-const PROD_STATUS_API_URL = `https://ecapi-cdn.pchome.com.tw/ecshop/prodapi/v2/prod/button&id=${REPLACE_PROD}&fields=Id,Qty,ButtonType,Price,isPrimeOnly,Device&_callback=add_prod_status`
+const PROD_STATUS_API_URL = `https://ecapi-cdn.pchome.com.tw/ecshop/prodapi/v2/prod/button&id=${REPLACE_PROD}&fields=Id,Qty,ButtonType,Price,isPrimeOnly,Device&_callback=add_prod_status_callback`
 const PROD_URL = `https://24h.pchome.com.tw/prod/v1/${REPLACE_PROD}?fq=/S/${REPLACE_CATEGORY}`;
 const IMG_URL = "https://cs-a.ecimg.tw";
 
@@ -43,77 +43,15 @@ let prod_count = null;
 
 
 /** 
- * 將 all_data 顯示到網頁前端上
- * @params {object} all_data 爬蟲完且交集完的資料
+ * load jsonp
+ * 雖然叫 jsonp, 但實際上就是讀取 js 檔案
+ * @params {string} url 要讀取的 js 檔案 url
  */ 
-function show(all_data){
-    let result_count = document.getElementById(RESULT_COUNT_ID);
-    let shower = document.getElementById(PROD_SHOWER_ID);
-    result_count.textContent = `總共找到${Object.keys(all_data).length}個結果`;
-    for (let id in all_data){
-        let tr = get_table_element(all_data[id], id);
-        shower.appendChild(tr);
-    }
-}
-
-
-/** 
- * 增加商品貨態到網頁前端上
- * @params {array[object]} 商品的貨態 array
- */ 
-function add_prod_status(all_data){
-    for (let i = 0; i < all_data.length; i = i + 1){
-        let data = all_data[i];
-        let id = data.Id;
-        let qty = data.Qty;
-
-        let a = document.querySelector(`#${id} td a`);
-        let br = document.createElement("br");
-        let text = document.createElement("a");
-        text.innerHTML = `剩餘${qty}件`;
-
-        if (qty <= 0){
-            a.classList.add("no_stock");
-        }
-
-        a.appendChild(br);
-        a.appendChild(text);
-    }
-}
-
-
-/** 
- * 取得網頁前端的 table 元素, 應該包含一系列的元素, 如 <tr><td><div><a></...>
- * @params {object} data 商品資料, 根據 get_data function 拿的資料
- * @params {string} id 商品的 id
- * @returns HtmlElement table 元素
- */ 
-function get_table_element(data, id){
-    let tr = document.createElement("tr");
-    tr.id = id;
-
-    let td = document.createElement("td");
-
-    let a = document.createElement("a");
-    a.href = data.url;
-
-    let text = document.createElement("a");
-    text.innerHTML = `${data.nick}<br>價格: ${data.price.P}`;
-
-    let br = document.createElement("br");
-
-    let img = document.createElement("img");
-    img.src = new URL(data.pic.S, IMG_URL).href; // 刪除鈕
-    img.alt = "商品圖片";
-    img.title = "商品圖片";
-    img.classList.add("prod_img");
-
-    a.appendChild(img);
-    a.appendChild(br);
-    a.appendChild(text);
-    td.appendChild(a);
-    tr.appendChild(td);
-    return tr;
+function import_js(url){
+    let script = document.createElement("script");
+    script.type = 'text/javascript';
+    script.src = url;
+    document.getElementsByTagName('head')[0].appendChild(script);
 }
 
 
@@ -149,55 +87,57 @@ function get_data(cid, pid, data){
 
 /** 
  * 取得兩主題的商品交集
- * 請注意, 依賴 crawler_data 這變數
- * @params {object} result 先前聯集完的結果
+ * @params {object} union_result 先前聯集完的結果
+ * @params {object} data 爬蟲過後的結果
+ * @params {array} intersection_id_array 要交集的 id array
  * @returns object 交集後的結果, 資料型態為: {get_id(): get_data()}
  */ 
-function intersection(result){
-    let first_empty = Object.keys(result).length === 0 ? true : false;
-    for (let cid in crawler_data){
-        if (all_intersection_id_array.indexOf(cid) < 0){
+function intersection(union_result, data, intersection_id_array){
+    let first_empty = Object.keys(union_result).length === 0 ? true : false;
+    for (let cid in data){
+        if (intersection_id_array.indexOf(cid) < 0){
             continue;
         }
 
-        let temp = {};
-        if (Object.keys(result).length === 0 && first_empty){
-            for (let i = 0; i < crawler_data[cid].length; i = i + 1){
-                let pid = get_id(crawler_data[cid][i]);
-                result[pid] = get_data(cid, pid, crawler_data[cid][i]);
+        let temp_data = {};
+        if (Object.keys(union_result).length === 0 && first_empty){
+            for (let i = 0; i < data[cid].length; i = i + 1){
+                let pid = get_id(data[cid][i]);
+                union_result[pid] = get_data(cid, pid, data[cid][i]);
             }
             first_empty = false;
-            console.log(result);
+            console.log(union_result);
         }else{
-            for (let i = 0; i < crawler_data[cid].length; i = i + 1){
-                let pid = get_id(crawler_data[cid][i]);
-                if (pid in result){
-                    temp[pid] = get_data(cid, pid, crawler_data[cid][i]);
+            for (let i = 0; i < data[cid].length; i = i + 1){
+                let pid = get_id(data[cid][i]);
+                if (pid in union_result){
+                    temp_data[pid] = get_data(cid, pid, data[cid][i]);
                 }
             }
-            console.log(temp);
-            result = temp;
+            console.log(temp_data);
+            union_result = temp_data;
         }
     }
-    return result;
+    return union_result;
 }
 
 
 /** 
  * 取得兩主題的商品聯集
- * 請注意, 依賴 crawler_data 這變數
+ * @params {object} data 爬蟲過後的結果
+ * @params {array} union_id_array 要聯集的 id array
  * @returns object 交集後的結果, 資料型態為: {get_id(): get_data()}
  */ 
-function union(){
+function union(data, union_id_array){
     let result = {};
-    for (let cid in crawler_data){
-        if (all_union_id_array.indexOf(cid) < 0){
+    for (let cid in data){
+        if (union_id_array.indexOf(cid) < 0){
             continue;
         }
 
-        for (let i = 0; i < crawler_data[cid].length; i = i + 1){
-            let pid = get_id(crawler_data[cid][i]);
-            result[pid] = get_data(cid, pid, crawler_data[cid][i]);
+        for (let i = 0; i < data[cid].length; i = i + 1){
+            let pid = get_id(data[cid][i]);
+            result[pid] = get_data(cid, pid, data[cid][i]);
         }
     }
     return result;
@@ -205,15 +145,27 @@ function union(){
 
 
 /** 
- * load jsonp
- * 雖然叫 jsonp, 但實際上就是讀取 js 檔案
- * @params {string} url 要讀取的 js 檔案 url
+ * 增加商品貨態到網頁前端上
+ * @params {array[object]} 商品的貨態 array
  */ 
-function import_js(url){
-    let script = document.createElement("script");
-    script.type = 'text/javascript';
-    script.src = url;
-    document.getElementsByTagName('head')[0].appendChild(script);
+function add_prod_status_callback(all_data){
+    for (let i = 0; i < all_data.length; i = i + 1){
+        let data = all_data[i];
+        let id = data.Id;
+        let qty = data.Qty;
+
+        let a = document.querySelector(`#${id} td a`);
+        let br = document.createElement("br");
+        let text = document.createElement("a");
+        text.innerHTML = `剩餘${qty}件`;
+
+        if (qty <= 0){
+            a.classList.add("no_stock");
+        }
+
+        a.appendChild(br);
+        a.appendChild(text);
+    }
 }
 
 
@@ -286,6 +238,56 @@ function pchome_crawler(id){
     category_id = id;
     let prod_count_url = PROD_COUNT_API_URL.replace(REPLACE_CATEGORY, category_id);
     import_js(prod_count_url);
+}
+
+
+/** 
+ * 將 all_data 顯示到網頁前端上
+ * @params {object} all_data 爬蟲完且交集完的資料
+ */ 
+function show(all_data){
+    let result_count = document.getElementById(RESULT_COUNT_ID);
+    let shower = document.getElementById(PROD_SHOWER_ID);
+    result_count.textContent = `總共找到${Object.keys(all_data).length}個結果`;
+    for (let id in all_data){
+        let tr = get_table_element(all_data[id], id);
+        shower.appendChild(tr);
+    }
+}
+
+
+/** 
+ * 取得網頁前端的 table 元素, 應該包含一系列的元素, 如 <tr><td><div><a></...>
+ * @params {object} data 商品資料, 根據 get_data function 拿的資料
+ * @params {string} id 商品的 id
+ * @returns HtmlElement table 元素
+ */ 
+function get_table_element(data, id){
+    let tr = document.createElement("tr");
+    tr.id = id;
+
+    let td = document.createElement("td");
+
+    let a = document.createElement("a");
+    a.href = data.url;
+
+    let text = document.createElement("a");
+    text.innerHTML = `${data.nick}<br>價格: ${data.price.P}`;
+
+    let br = document.createElement("br");
+
+    let img = document.createElement("img");
+    img.src = new URL(data.pic.S, IMG_URL).href; // 刪除鈕
+    img.alt = "商品圖片";
+    img.title = "商品圖片";
+    img.classList.add("prod_img");
+
+    a.appendChild(img);
+    a.appendChild(br);
+    a.appendChild(text);
+    td.appendChild(a);
+    tr.appendChild(td);
+    return tr;
 }
 
 
@@ -433,8 +435,8 @@ async function run(){
     }
 
     // 全部處理完時要做的事
-    result = union();
-    result = intersection(result);
+    result = union(crawler_data, all_union_id_array);
+    result = intersection(result, crawler_data, all_intersection_id_array);
     show(result);
 
     //顯示貨態, 要先取得所有 prod id
