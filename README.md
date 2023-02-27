@@ -4,9 +4,9 @@
 
 # 提供的版本
 
-1. [google-extension(尚未上架)](https://cool9203.github.io/pchome-multi-category-search)
+1. [google-extension](https://chrome.google.com/webstore/detail/pchome-multi-category-sea/hpidccbaddecbdhgafchoeipopkhdkak?hl=zh-TW)
 2. [github-page](https://cool9203.github.io/pchome-multi-category-search/src/index.html)
-3. [tampermonkey](https://github.com/cool9203/pchome-multi-category-search/tree/tampermonkey)
+3. [tampermonkey(尚未完成)](https://github.com/cool9203/pchome-multi-category-search/tree/tampermonkey)
 
 # 如何使用
 
@@ -16,7 +16,7 @@
 
 - [ ] [排序功能](https://github.com/cool9203/pchome-multi-category-search/issues/1)
 - [ ] [搜尋功能](https://github.com/cool9203/pchome-multi-category-search/issues/2)
-- [ ] [聯集功能](https://github.com/cool9203/pchome-multi-category-search/issues/3)
+- [X] [聯集功能](https://github.com/cool9203/pchome-multi-category-search/issues/3)
 
 # License
 
