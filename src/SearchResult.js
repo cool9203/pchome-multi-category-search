@@ -6,7 +6,7 @@
  * 3. PROD_API_URL_RELEASE 實際取得商品資料的 API, 同時允許該程式爬取下個 prod url
  * 4. PROD_STATUS_API_URL 取得貨態 API
  * 請注意:
- * 該程式為了正確執行, 使用到互斥鎖 variable: mutex
+ * 該程式為了正確執行, 使用到互斥鎖 variable: mutex_lock
  * 目的是為了解決 pchome API 是用 jsonp, 且要將主題的 id 對應到爬取的商品(換句話說就是主題底下的商品要對得起來. aka 一個主題的商品要存在一樣地方, 不同主題要存在不同地方)
  */
 // Replace string parameter
@@ -87,38 +87,41 @@ function get_data(cid, pid, data){
 
 /** 
  * 取得兩主題的商品交集
- * @params {object} union_result 先前聯集完的結果
+ * @params {object} result 先前聯集完的結果
  * @params {object} data 爬蟲過後的結果
  * @params {array} intersection_id_array 要交集的 id array
  * @returns object 交集後的結果, 資料型態為: {get_id(): get_data()}
  */ 
-function intersection(union_result, data, intersection_id_array){
-    let first_empty = Object.keys(union_result).length === 0 ? true : false;
+function intersection(result, data, intersection_id_array){
+    let first_empty = Object.keys(result).length === 0 ? true : false;
+    let epoch = 0;
     for (let cid in data){
         if (intersection_id_array.indexOf(cid) < 0){
             continue;
         }
+        epoch += 1;
+        console.debug(`epoch-${epoch} of ${cid} :`);
 
         let temp_data = {};
-        if (Object.keys(union_result).length === 0 && first_empty){
+        if (Object.keys(result).length === 0 && first_empty){ // 若 result 一進來就是空集合, 則將第0筆視為 union 後的結果
             for (let i = 0; i < data[cid].length; i = i + 1){
                 let pid = get_id(data[cid][i]);
-                union_result[pid] = get_data(cid, pid, data[cid][i]);
+                result[pid] = get_data(cid, pid, data[cid][i]);
             }
             first_empty = false;
-            console.log(union_result);
-        }else{
+            console.debug(result);
+        }else{  // 否則則繼續做交集
             for (let i = 0; i < data[cid].length; i = i + 1){
                 let pid = get_id(data[cid][i]);
-                if (pid in union_result){
+                if (pid in result){
                     temp_data[pid] = get_data(cid, pid, data[cid][i]);
                 }
             }
-            console.log(temp_data);
-            union_result = temp_data;
+            console.debug(temp_data);
+            result = temp_data;
         }
     }
-    return union_result;
+    return result;
 }
 
 
@@ -365,7 +368,7 @@ function try_get_query_variable_value(variable_name_array, _default, split_token
         }
 
         if (value !== undefined && value.length > 0){
-            console.log(`value: ${value}`);
+            console.debug(`value: ${value}`);
             if (split_token !== null ** split_token !== undefined && split_token.length > 0){
                 value = value.split(split_token);
             }
@@ -405,26 +408,18 @@ async function run(){
         all_intersection_id_array = all_id_array;
     }
 
-    // 如果全部都要交集, 那需要有一個當作聯集, 以便以他為基礎再去交集
-    if (all_union_id_array.length === 0){
-        console.log("aaa");
-        all_union_id_array.push(all_intersection_id_array[0]);
-        all_intersection_id_array.splice(0, 1);
-    }
-
-    console.log(`all_url_array: ${all_url_array}`);
-    console.log(`all_id_array: ${all_id_array}`);
-    console.log(`all_intersection_id_array: ${all_intersection_id_array}`);
-    console.log(`all_union_id_array: ${all_union_id_array}`);
+    console.debug(`all_url_array: ${all_url_array}`);
+    console.debug(`all_id_array: ${all_id_array}`);
+    console.debug(`all_intersection_id_array: ${all_intersection_id_array}`);
+    console.debug(`all_union_id_array: ${all_union_id_array}`);
     
     // 使用 id array 的 id 爬取商品資料到 crawler_data
     for (let i = 0; i < all_id_array.length; i = i + 1){
-        if (i == 0){
-            console.log("Get all_id_array from url param");
-        }
         // 使用到互斥鎖, 防止資料競爭問題
         while (true){
             if (mutex_lock){
+                console.log("mutex lock");
+                console.log(`start crawl id: ${all_id_array[i]}`);
                 mutex_lock = false;
                 pchome_crawler(all_id_array[i]);
                 break;
