@@ -32,10 +32,12 @@ const REPLACE_OFFSET = "<offset>";
 const PROD_LIMIT = 36;
 const PROD_COUNT_API_URL = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod/count&_callback=api_prod_count_callback`;
 const PROD_API_URL = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod&offset=${REPLACE_OFFSET}&limit=${PROD_LIMIT}&_callback=api_prod_callback`;
-const PROD_API_URL_RELEASE = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/store/${REPLACE_CATEGORY}/prod&offset=${REPLACE_OFFSET}&limit=${PROD_LIMIT}&_callback=api_prod_callback_release`;
-const PROD_STATUS_API_URL = `https://ecapi-cdn.pchome.com.tw/ecshop/prodapi/v2/prod/button&id=${REPLACE_PROD}&fields=Id,Qty,ButtonType,Price,isPrimeOnly,Device&_callback=add_prod_status_callback`
 const PROD_URL = `https://24h.pchome.com.tw/prod/v1/${REPLACE_PROD}?fq=/S/${REPLACE_CATEGORY}`;
 const IMG_URL = "https://cs-a.ecimg.tw";
+
+// Fetch regex patten
+const PROD_COUNT_REGEX = /[0-9]+/;
+const PROD_REGEX = /\[.*\]/;
 
 // Frontend element id
 const PROD_SHOWER_ID = "prod_shower_content";
@@ -45,12 +47,12 @@ const RESULT_COUNT_ID = "result_count";
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // Program variable
-let crawler_data = {};
 let category_id = null;
+let prod_count = null;
+let crawler_data = {};
 let all_intersection_id_array = [];
 let all_union_id_array = [];
-let mutex_lock = true;
-let prod_count = null;
+let origin_url = null;
 
 
 /** 
@@ -58,11 +60,11 @@ let prod_count = null;
  * 雖然叫 jsonp, 但實際上就是讀取 js 檔案
  * @params {string} url 要讀取的 js 檔案 url
  */ 
-function import_js(url){
-    let script = document.createElement("script");
-    script.type = 'text/javascript';
-    script.src = url;
-    document.getElementsByTagName('head')[0].appendChild(script);
+async function _call_api(url, parse_regex){
+    console.debug(`call api: ${url}`);
+    let response = await fetch(url);
+    let data = await response.text();
+    return parse_regex.exec(data);
 }
 
 
@@ -72,7 +74,8 @@ function import_js(url){
  * @returns string 商品 id
  */ 
 function get_id(data){
-    return data.Id;
+    let split_id = data.Id.split("-");
+    return `${split_id[0]}-${split_id[1]}`;
 }
 
 
@@ -159,31 +162,6 @@ function union(data, union_id_array){
 
 
 /** 
- * 增加商品貨態到網頁前端上
- * @params {array[object]} 商品的貨態 array
- */ 
-function add_prod_status_callback(all_data){
-    for (let i = 0; i < all_data.length; i = i + 1){
-        let data = all_data[i];
-        let id = data.Id;
-        let qty = data.Qty;
-
-        let a = document.querySelector(`#${id} td a`);
-        let br = document.createElement("br");
-        let text = document.createElement("a");
-        text.innerHTML = `剩餘${qty}件`;
-
-        if (qty <= 0){
-            a.classList.add("no_stock");
-        }
-
-        a.appendChild(br);
-        a.appendChild(text);
-    }
-}
-
-
-/** 
  * 商品資料爬蟲
  * 請注意: 
  * 依賴 crawler_data 與 category_id 這兩個變數
@@ -192,33 +170,14 @@ function add_prod_status_callback(all_data){
  * @params {object} data 商品資料, 根據 pchome API 的 PROD_API_URL 來的
  */ 
 function api_prod_callback(data){
+    console.debug("start api_prod_callback");
     for (let j = 0; j < data.length; j = j + 1){
         if (!(category_id in crawler_data)){
             crawler_data[category_id] = [];
         }
         crawler_data[category_id].push(data[j]);
     }
-}
-
-
-/** 
- * 商品資料爬蟲, 呼叫時會通知程式可以繼續爬下一個 category_id 的 url
- * 請注意: 
- * 依賴 crawler_data 與 category_id 這兩個變數
- * 該 callback 應該要同步執行, 才可以正確的將爬蟲回來的商品資料對應到 category_id
- * 否則將會得到錯誤的結果
- * @params {object} data 商品資料, 根據 pchome API 的 PROD_API_URL 來的
- */ 
-function api_prod_callback_release(data){
-    for (let j = 0; j < data.length; j = j + 1){
-        if (!(category_id in crawler_data)){
-            crawler_data[category_id] = [];
-        }
-        crawler_data[category_id].push(data[j]);
-    }
-    crawler_data[category_id] = crawler_data[category_id].slice(0, prod_count);
-    mutex_lock = true;
-    console.log("mutex release");
+    console.debug("end api_prod_callback");
 }
 
 
@@ -227,19 +186,17 @@ function api_prod_callback_release(data){
  * 該 function 會呼叫 PROD_API_URL / PROD_API_URL_RELEASE
  * @params {int} count 有效商品筆數
  */ 
-function api_prod_count_callback(count){
+async function api_prod_count_callback(count){
+    console.debug("start api_prod_count_callback");
     prod_count = count;
     let epochs = Math.ceil(count / PROD_LIMIT)
     for (let i = 0; i < epochs ; i = i + 1){
         let prod_url = null;
-
-        if (i != epochs - 1){
-            prod_url = PROD_API_URL.replace(REPLACE_CATEGORY, category_id).replace(REPLACE_OFFSET, i * PROD_LIMIT);
-        }else{
-            prod_url = PROD_API_URL_RELEASE.replace(REPLACE_CATEGORY, category_id).replace(REPLACE_OFFSET, i * PROD_LIMIT);
-        }
-        import_js(prod_url);
+        prod_url = PROD_API_URL.replace(REPLACE_CATEGORY, category_id).replace(REPLACE_OFFSET, i * PROD_LIMIT);
+        let data = await _call_api(prod_url, PROD_REGEX);
+        api_prod_callback(JSON.parse(data));
     }
+    console.debug("end api_prod_count_callback");
 }
 
 
@@ -248,151 +205,106 @@ function api_prod_count_callback(count){
  * 該 function 會呼叫 PROD_COUNT_API_URL
  * @params {string} id 主題 id
  */ 
-function pchome_crawler(id){
+async function pchome_crawler(id){
+    console.debug("start pchome_crawler");
     category_id = id;
     let prod_count_url = PROD_COUNT_API_URL.replace(REPLACE_CATEGORY, category_id);
-    import_js(prod_count_url);
+    let count = await _call_api(prod_count_url, PROD_COUNT_REGEX);
+    await api_prod_count_callback(parseInt(count));
 }
 
 
-/** 
- * 將 all_data 顯示到網頁前端上
- * @params {object} all_data 爬蟲完且交集完的資料
- */ 
-function show(all_data){
-    let result_count = document.getElementById(RESULT_COUNT_ID);
-    let shower = document.getElementById(PROD_SHOWER_ID);
-    result_count.textContent = `總共找到${Object.keys(all_data).length}個結果`;
-    for (let id in all_data){
-        let tr = get_table_element(all_data[id], id);
-        shower.appendChild(tr);
-    }
-}
-
-
-/** 
- * 取得網頁前端的 table 元素, 應該包含一系列的元素, 如 <tr><td><div><a></...>
- * @params {object} data 商品資料, 根據 get_data function 拿的資料
- * @params {string} id 商品的 id
- * @returns HtmlElement table 元素
- */ 
-function get_table_element(data, id){
-    let tr = document.createElement("tr");
-    tr.id = id;
-
-    let td = document.createElement("td");
-
-    let a = document.createElement("a");
-    a.href = data.url;
-
-    let text = document.createElement("a");
-    text.innerHTML = `${data.nick}<br>價格: ${data.price.P}`;
-
-    let br = document.createElement("br");
-
-    let img = document.createElement("img");
-    img.src = new URL(data.pic.S, IMG_URL).href; // 刪除鈕
-    img.alt = "商品圖片";
-    img.title = "商品圖片";
-    img.classList.add("prod_img");
-
-    a.appendChild(img);
-    a.appendChild(br);
-    a.appendChild(text);
-    td.appendChild(a);
-    tr.appendChild(td);
-    return tr;
-}
-
-
-/** 
- * 解析 url 的 query, url 指的是這網頁的
- * Reference: https://shunnien.github.io/2017/07/03/Get-Query-String-Parameters-with-JavaScript/
- * @params {string} url
- * @returns object 解析後的結果
- */ 
-function query_string(url)
-{
-    // This function is anonymous, is executed immediately and
-    // the return value is assigned to QueryString!
-    let query_string = {};
-    let query = url.search.substring(1);
-    let vars = query.split("&");
-    for (let i = 0; i < vars.length; i++)
-    {
-        let pair = vars[i].split("=");
-        // If first entry with this name
-        if (typeof query_string[pair[0]] === "undefined")
-        {
-            query_string[pair[0]] = pair[1];
-            // If second entry with this name
-        } else if (typeof query_string[pair[0]] === "string")
-        {
-            let arr = [query_string[pair[0]], pair[1]];
-            query_string[pair[0]] = arr;
-            // If third or later entry with this name
-        } else
-        {
-            query_string[pair[0]].push(pair[1]);
-        }
-    }
-    return query_string;
-}
-
-
-/** 
- * 轉換 url to id
- * @params {array} url array
- * @returns array id array
- */ 
-function url_array_to_id_array(all_url_array){
-    let all_id_array = [];
-    for (let i = 0; i < all_url_array.length; i = i + 1){
-        let path_name = new URL(all_url_array[i]).pathname.split("/");
-        let id = path_name[path_name.length - 1];
-        all_id_array.push(id);
-    }
-    return all_id_array;
-}
-
-
-/** 
- * 嘗試取得 url 的 query 變數數值
- * @params {array} variable_name_array 想要拿的變數名 array
- * @params {type} _default 任何型態的值, 當拿不到這值時需要拿它當作預設值, 可以不輸入該值
- * @params {type} split_token 預設是 pass array 型態過來, 所以要 split 成 array
- * @returns array/str 取得的變數對應數值
- */ 
-function try_get_query_variable_value(variable_name_array, _default, split_token=","){
-    let value = undefined;
-    for (let i = 0; i < variable_name_array.length; i = i + 1){
-        let variable_name = variable_name_array[i];
-
-        try{
-            value = query_string(window.location)[variable_name];
-        }
-        catch{
-            try{
-                value = query_string(window.location)[variable_name];
-            }
-            catch{}
-        }
-
-        if (value !== undefined && value.length > 0){
-            console.debug(`value: ${value}`);
-            if (split_token !== null ** split_token !== undefined && split_token.length > 0){
-                value = value.split(split_token);
-            }
-            break;
-        }
-    }
-
-    if (value === undefined || value.length === 0){
-        value = _default;
+async function _add(id){
+    if (all_intersection_id_array.indexOf(id) == -1){
+        all_intersection_id_array.push(id);
     }
     
-    return value;
+    console.log(`start crawl id: ${id}`);
+    await pchome_crawler(id);
+    console.log(`end crawl id: ${id}`);
+    return {success: true, action: "add"};
 }
+
+
+function _get(){
+    let result = {};
+    result = intersection(result, crawler_data, all_intersection_id_array);
+    return {result: result, success: true, action: "get"};
+}
+
+
+function _delete(id){
+    let index = all_intersection_id_array.indexOf(id);
+    all_intersection_id_array.splice(index, 1);
+    delete crawler_data[id];
+    return {success: true, action: "delete"};
+}
+
+
+function _check_same_url(new_url){
+    if (new_url === origin_url){
+        return true;
+    }
+    else{
+        origin_url = new_url;
+        return false;
+    }
+}
+
+
+function _reset(){
+    crawler_data = {};
+    all_intersection_id_array = [];
+    all_union_id_array = [];
+}
+
+
+/** 
+ * user script API event
+ */ 
+chrome.runtime.onConnect.addListener(
+    function(port) {
+        console.debug("Get connect");
+        port.onMessage.addListener(
+            async function(message){
+                // 先確認當前網址是否有改變
+                if (!_check_same_url(message.url)){
+                    // 若有改變(get false)則需要 reset
+                    console.debug("reset");
+                    _reset();
+                }
+
+                let result = {success: false, action: message.action};
+                try{
+                    if (message.action === "add"){  // 增加 id
+                        console.debug("add");
+                        all_intersection_id_array.push(message.id);
+                        result = await _add(message.id);
+                    }
+
+                    else if (message.action === "get"){  // 取得結果
+                        console.debug("get");
+                        result = _get();
+                    }
+
+                    else if (message.action === "delete"){  // 刪除 id
+                        console.debug("delete");
+                        result = _delete(message.id);
+                    }
+
+                    else if (message.action === "get_intersection"){  // 取得 intersection array
+                        console.debug("get_intersection");
+                        result = {result: all_intersection_id_array, success: true, action: "get_intersection"};
+                    }
+                }
+                catch (e){
+                    console.log(e);
+                }
+                port.postMessage(result);  // 回傳 API 結果
+            }
+        );
+    }
+);
 
 
 /** 
@@ -485,27 +397,18 @@ chrome.contextMenus.onClicked.addListener((info, tab)=>{
     }
     console.log("產生報表");
 
-    run();
+    let query = "";
+    for (let i = 0; i < all_intersection_id_array.length; i = i + 1){
+        let id = all_intersection_id_array[i];
+        if (query === ""){
+            query += id;
+        }
+        else{
+            query += `,${id}`;
+        }
+    }
 
-    // (async () => {
-    //     const [tab] = await chrome.tabs.query({active: true, lastFocusedWindow: true});
-    //     const response = await chrome.tabs.sendMessage(tab.id, {greeting: "hello"});
-    //     // do something with response here, not outside the function
-    //     console.log(response);
-    //     let all_id_array = response.data;
-    //     let query = "";
-    //     for (let i = 0; i < all_id_array.length; i = i + 1){
-    //         let id = all_id_array[i];
-    //         if (query === ""){
-    //             query += id;
-    //         }
-    //         else{
-    //             query += `,${id}`;
-    //         }
-    //     }
-
-    //     chrome.tabs.create({
-    //         "url": `https://cool9203.github.io/pchome-multi-category-search/src/SearchResult.html?all_id_array=${query}`
-    //     });
-    // })();
+    chrome.tabs.create({
+        "url": `https://cool9203.github.io/pchome-multi-category-search/src/SearchResult.html?intersection=${query}`
+    });
 });
