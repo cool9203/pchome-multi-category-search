@@ -1,13 +1,17 @@
 const ELEMENT_QUERY = "dl#MenuContainer li";
 const TOP_PROD_QUERY = "div[_id]";
 const PROD_QUERY = "dd[_id]";
-const DELAY = 3000;
+const DELAY = 100;
 const OPACITY = 0.1;
 
 let PORT = chrome.runtime.connect();
 
 console.log("Pchome multi category search load success!!");
 
+
+/**
+ * 
+ */
 function init(){
     console.log("init");
     let all_category = document.querySelectorAll(ELEMENT_QUERY);
@@ -43,9 +47,16 @@ function init(){
     PORT.postMessage({url: new URL(window.location.pathname, window.location.origin).href,
         action: "get"
     });
+    PORT.postMessage({url: new URL(window.location.pathname, window.location.origin).href,
+        action: "get_intersection"
+    });
 }
 
 
+/**
+ * 
+ * @param {*} result 
+ */
 function run(result){
     console.log("run");
     let all_query = [TOP_PROD_QUERY, PROD_QUERY];
@@ -71,17 +82,26 @@ function run(result){
 }
 
 
+/**
+ * 
+ * @param {array} all_id 
+ */
 function recheck(all_id){
+    console.log("recheck");
+    console.debug(all_id);
     let nodes = document.querySelectorAll("input[id^='__'][type=checkbox]");
     for (let i = 0; i < nodes.length; i = i + 1){
         let id = nodes[i].id.slice(2);
-        if (id in all_id){
+        if (all_id.indexOf(id) !== -1){
             nodes[i].checked = true;
         }
     }
 }
 
 
+/**
+ * call 擴充功能的 API 的 on message event
+ */
 PORT.onMessage.addListener(function(message) {
     if (message.action === "get"){
         let result = message.result;
@@ -97,4 +117,21 @@ PORT.onMessage.addListener(function(message) {
 });
 
 
-setTimeout(init, DELAY);
+/**
+ * 讓擴充功能的 background.js 確認頁面執行完沒, 執行完再 call content script init
+ */
+chrome.runtime.onMessage.addListener(
+    function(request, sender, sendResponse) {
+        if (request.action === "init"){
+            setTimeout(init, DELAY);
+        }
+    }
+);
+
+
+/**
+ * tab 關閉事件
+ */
+// chrome.tabs.onRemoved.addListener(
+//     callback: function,
+// )

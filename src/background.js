@@ -293,7 +293,6 @@ chrome.runtime.onConnect.addListener(
                 try{
                     if (message.action === "add"){  // 增加 id
                         console.debug("add");
-                        all_intersection_id_array.push(message.id);
                         result = await _add(message.id);
                     }
 
@@ -320,6 +319,18 @@ chrome.runtime.onConnect.addListener(
         );
     }
 );
+
+
+/**
+ * 
+ */
+chrome.webNavigation.onCompleted.addListener(
+    async function call_content_script_init(){
+        let [tab] = await chrome.tabs.query({active: true, lastFocusedWindow: true});
+        await chrome.tabs.sendMessage(tab.id, {action: "init"});
+    },
+    {hostContains: "24h.pchome.com.tw"}
+)
 
 
 /** 
