@@ -39,13 +39,6 @@ const IMG_URL = "https://cs-a.ecimg.tw";
 const PROD_COUNT_REGEX = /[0-9]+/;
 const PROD_REGEX = /\[.*\]/;
 
-// Frontend element id
-const PROD_SHOWER_ID = "prod_shower_content";
-const RESULT_COUNT_ID = "result_count";
-
-// Sleep function
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
 // Program variable
 let category_id = null;
 let prod_count = null;
