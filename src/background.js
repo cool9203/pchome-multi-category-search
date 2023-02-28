@@ -214,6 +214,11 @@ async function pchome_crawler(id){
 }
 
 
+/**
+ * API - Create
+ * @params {string} id 商品 ID
+ * @returns object API response
+ */
 async function _add(id){
     if (all_intersection_id_array.indexOf(id) == -1){
         all_intersection_id_array.push(id);
@@ -226,6 +231,10 @@ async function _add(id){
 }
 
 
+/**
+ * API - Read
+ * @returns object API response
+ */
 function _get(){
     let result = {};
     result = intersection(result, crawler_data, all_intersection_id_array);
@@ -233,6 +242,11 @@ function _get(){
 }
 
 
+/**
+ * API - Delete
+ * @params {string} id 商品 ID
+ * @returns object API response
+ */
 function _delete(id){
     let index = all_intersection_id_array.indexOf(id);
     all_intersection_id_array.splice(index, 1);
@@ -241,6 +255,11 @@ function _delete(id){
 }
 
 
+/**
+ * check client url
+ * @params {string} id 商品 ID
+ * @returns object API response
+ */
 function _check_same_url(new_url){
     if (new_url === origin_url){
         return true;
@@ -252,6 +271,9 @@ function _check_same_url(new_url){
 }
 
 
+/**
+ * program variable reset
+ */
 function _reset(){
     crawler_data = {};
     all_intersection_id_array = [];
@@ -305,77 +327,6 @@ chrome.runtime.onConnect.addListener(
         );
     }
 );
-
-
-/** 
- * 該程式的進入點
- */ 
-async function run(){
-    // 從 url param 取得所有參數
-    let all_url_array = try_get_query_variable_value(["all_url_array", "all_url", "url"], null);
-    let all_id_array = try_get_query_variable_value(["all_id_array", "all_id", "id"], null);
-    all_intersection_id_array = try_get_query_variable_value(["all_intersection_id_array", "all_intersection_id", "all_intersection_array", "all_intersection", "intersection", "inter"], []);
-    all_union_id_array = try_get_query_variable_value(["all_union_id_array", "all_union_id", "all_union_array", "all_union", "union"], []);
-
-    // 如果 pass url 過來, 那需要解析
-    if (all_url_array !== null && all_id_array === null){
-        all_id_array = url_array_to_id_array(all_url_array);
-    }else if (all_id_array === null){
-        all_id_array = [];
-        all_id_array.push(...all_intersection_id_array);
-        all_id_array.push(...all_union_id_array);
-    }
-    
-    // fit 舊版本, 只有交集功能但沒有聯集功能
-    if (all_intersection_id_array.length === 0 && all_union_id_array.length === 0){
-        all_intersection_id_array = all_id_array;
-    }
-
-    console.debug(`all_url_array: ${all_url_array}`);
-    console.debug(`all_id_array: ${all_id_array}`);
-    console.debug(`all_intersection_id_array: ${all_intersection_id_array}`);
-    console.debug(`all_union_id_array: ${all_union_id_array}`);
-    
-    // 使用 id array 的 id 爬取商品資料到 crawler_data
-    for (let i = 0; i < all_id_array.length; i = i + 1){
-        // 使用到互斥鎖, 防止資料競爭問題
-        while (true){
-            if (mutex_lock){
-                console.log("mutex lock");
-                console.log(`start crawl id: ${all_id_array[i]}`);
-                mutex_lock = false;
-                pchome_crawler(all_id_array[i]);
-                break;
-            }
-            await sleep(SLEEP_MS);
-        }
-    }
-
-    // 等待互斥鎖被 release
-    while (true){
-        if (mutex_lock){
-            break;
-        }
-        await sleep(SLEEP_MS);
-    }
-
-    // 全部處理完時要做的事
-    result = union(crawler_data, all_union_id_array);
-    result = intersection(result, crawler_data, all_intersection_id_array);
-    show(result);
-
-    //顯示貨態, 要先取得所有 prod id
-    let prod_string = "";
-    for (let id in result){
-        if (prod_string.length === 0){
-            prod_string += id;
-        }else{
-            prod_string += `,${id}`;
-        }
-    }
-    let prod_status_url = PROD_STATUS_API_URL.replace(REPLACE_PROD, prod_string);
-    import_js(prod_status_url);
-}
 
 
 /** 
