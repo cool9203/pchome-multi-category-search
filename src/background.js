@@ -13,7 +13,6 @@ const SETTING = {
         windowId: 123,
     },
 }
-const SLEEP_MS = 100; // 多久檢查一次商品資料是否爬完, 設定越短整個程式跑越快, 但會受限於 pchome API response 速度
 
 // Replace string parameter
 const REPLACE_CATEGORY = "<category_id>";
@@ -27,7 +26,7 @@ const PROD_API_URL = `https://ecapi-cdn.pchome.com.tw/cdn/ecshop/prodapi/v2/stor
 const PROD_URL = `https://24h.pchome.com.tw/prod/v1/${REPLACE_PROD}?fq=/S/${REPLACE_CATEGORY}`;
 const IMG_URL = "https://cs-a.ecimg.tw";
 
-// Fetch regex patten
+// Regex patten
 const PROD_COUNT_REGEX = /[0-9]+/;
 const PROD_REGEX = /\[.*\]/;
 
