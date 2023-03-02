@@ -1,13 +1,5 @@
 /**
  * 該程式目的是要爬取 pchome 多個 url 的商品資料, 並將這些不同 url 的商品根據其商品 id 做交集, 取得多主題下的商品有哪些.
- * 打的 API 順序如下:
- * 1. PROD_COUNT_API_URL 先取得總商品數量, 由於 pchome 可以取得沒貨/遠古時期的商品資料, 需要先打這支確定 2. 3. 的前幾筆資料是有效的
- * 2. PROD_API_URL 實際取得商品資料的 API
- * 3. PROD_API_URL_RELEASE 實際取得商品資料的 API, 同時允許該程式爬取下個 prod url
- * 4. PROD_STATUS_API_URL 取得貨態 API
- * 請注意:
- * 該程式為了正確執行, 使用到互斥鎖 variable: mutex_lock
- * 目的是為了解決 pchome API 是用 jsonp, 且要將主題的 id 對應到爬取的商品(換句話說就是主題底下的商品要對得起來. aka 一個主題的商品要存在一樣地方, 不同主題要存在不同地方)
  */
 
 // Program setting
