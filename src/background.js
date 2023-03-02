@@ -44,8 +44,10 @@ let category_id = null;
 let prod_count = null;
 let crawler_data = {};
 let all_intersection_id_array = [];
-let all_union_id_array = [];
 let origin_url = null;
+
+
+// TODO: 需要大幅改寫, 根據 focus tab url 來建立 intersection_id_array, 並共用 crawl data
 
 
 /** 
@@ -367,3 +369,6 @@ chrome.contextMenus.onClicked.addListener((info, tab)=>{
         "url": `https://cool9203.github.io/pchome-multi-category-search/src/SearchResult.html?intersection=${query}`
     });
 });
+
+
+// TODO: Tabs close event 需要清除crawler_data
