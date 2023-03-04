@@ -141,11 +141,3 @@ chrome.runtime.onMessage.addListener(
         }
     }
 );
-
-
-/**
- * tab 關閉事件
- */
-// chrome.tabs.onRemoved.addListener(
-//     callback: function,
-// )
