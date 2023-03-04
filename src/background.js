@@ -8,10 +8,9 @@ const SETTING = {
         id: "GenerateMultiCategorySearchPage",
         title: "PchomeMultiCategorySearch: 生成報表",
     },
-    generate_page_tab_create: {
-        url: "",
-        windowId: 123,
-    },
+    pchome_domain: "24h.pchome.com.tw",
+    github_page_url: "https://cool9203.github.io/pchome-multi-category-search/src/SearchResult.html",
+    query_key: "intersection",
 }
 
 // Replace string parameter
@@ -33,9 +32,6 @@ const PROD_REGEX = /\[.*\]/;
 // Program variable
 let data_cache = {};
 let all_intersection_id_array = {};
-const PCHOME_DOMAIN = "24h.pchome.com.tw";
-const GITHUB_PAGE_URL = "https://cool9203.github.io/pchome-multi-category-search/src/SearchResult.html";
-const QUERY_KEY = "intersection";
 
 
 /** 
@@ -134,7 +130,7 @@ function union(data, union_id_array){
 /** 
  * 使用 fetch call API
  * @param {string} API url
- * @param {parse_regex} 
+ * @param {RegExp} parse_regex 要執行的 regex
  * @return {string} API response string
  */ 
 async function _call_api(url, parse_regex=undefined){
@@ -150,46 +146,51 @@ async function _call_api(url, parse_regex=undefined){
 
 
 /** 
- * 商品資料爬蟲
+ * 商品資料爬蟲  
  * NOTE: 該 function 改動到 data_cache, 因為會直接新增該次爬回來的商品資料進去
  * @param {object} data 該次 call API 拿回來的商品資料, 根據 pchome API 的 PROD_API_URL 來的
  * @param {string} 該次爬取的主題, 指的是 url 所代表的商品類型(應該只傳 id 過來)
  */ 
-function add_prod_to_data_cache(data, category_id){
+function add_prod_to_data_cache(data, id){
     console.debug("start add_prod_to_data_cache");
     for (let j = 0; j < data.length; j = j + 1){
-        if (!(category_id in data_cache)){
-            data_cache[category_id] = [];
+        if (!(id in data_cache)){
+            data_cache[id] = [];
         }
-        data_cache[category_id].push(data[j]);
+        data_cache[id].push(data[j]);
     }
     console.debug("end add_prod_to_data_cache");
 }
 
 
 /** 
- * 該程式爬取 pchome 商品 API 的主要呼叫 function
- * 該 function 會呼叫 PROD_COUNT_API_URL
+ * 該程式爬取 pchome 商品 API 的主要呼叫 function  
+ * 該 function 會呼叫 PROD_COUNT_API_URL 取得要取得的商品數量  
+ * 再來會呼叫 PROD_API_URL 去實際的爬蟲  
+ * 最後爬回來的商品資料會呼叫 add_prod_to_data_cache 儲存  
+ * NOTE: 該 function 改動到 data_cache, 因為 API 會拿回所有資料, 但只需要前 count 筆有效資料而已, 所以會刪除無效資料
  * @param {string} id 主題 id
  */ 
 async function pchome_crawler(id){
     console.debug("start pchome_crawler");
     console.debug(`id: ${id}`);
     if (id in data_cache){
-        console.debug(`${id} data in cache`);
+        console.log("data in cache");
     }else{
+        console.log(`${id} not in cache`);
+
         let prod_count_url = PROD_COUNT_API_URL.replace(REPLACE_CATEGORY, id);
         let count = await _call_api(prod_count_url, PROD_COUNT_REGEX);
         console.debug(`count: ${count}`);
         
         console.debug("start api_prod");
-        let epochs = Math.ceil(count / PROD_LIMIT)
+        let epochs = Math.ceil(count / PROD_LIMIT) // 計算要 call PROD_API_URL 幾次
         for (let i = 0; i < epochs ; i = i + 1){
-            let prod_url = null;
-            prod_url = PROD_API_URL.replace(REPLACE_CATEGORY, id).replace(REPLACE_OFFSET, i * PROD_LIMIT);
+            let prod_url = PROD_API_URL.replace(REPLACE_CATEGORY, id).replace(REPLACE_OFFSET, i * PROD_LIMIT);
             let data = await _call_api(prod_url, PROD_REGEX);
             add_prod_to_data_cache(JSON.parse(data), id);
         }
+        data_cache[id] = data_cache[id].slice(0, count); // 由於一次爬就是加入 PROD_LIMIT 的數量, 所以需要將多出的刪掉
         console.debug("end api_prod");
     }
     console.debug("end pchome_crawler");
@@ -197,7 +198,9 @@ async function pchome_crawler(id){
 
 
 /**
- * API - Create
+ * API - Create  
+ * NOTE: 該 function 改動到 all_intersection_id_array, 因為會新增新 id 進去
+ * @param {string} key 當前頁面的 url
  * @param {string} id 商品 ID
  * @return {object} API response
  */
@@ -218,6 +221,7 @@ async function _add(key, id){
 
 /**
  * API - Read
+ * @param {string} key 當前頁面的 url
  * @return {object} API response
  */
 function _get(key){
@@ -231,6 +235,8 @@ function _get(key){
 
 /**
  * API - Delete
+ * NOTE: 該 function 改動到 all_intersection_id_array, 因為會刪除 id
+ * @param {string} key 當前頁面的 url
  * @param {string} id 商品 ID
  * @return {object} API response
  */
@@ -253,22 +259,26 @@ chrome.runtime.onConnect.addListener(
             async function(message){
                 let result = {success: false, action: message.action};
                 try{
-                    if (message.action === "add"){  // 增加 id
+                    // 增加 id
+                    if (message.action === "add"){  
                         console.log("add");
                         result = await _add(message.url, message.id);
                     }
 
-                    else if (message.action === "get"){  // 取得結果
+                    // 取得結果
+                    else if (message.action === "get"){  
                         console.log("get");
                         result = _get(message.url);
                     }
 
-                    else if (message.action === "delete"){  // 刪除 id
+                    // 刪除 id
+                    else if (message.action === "delete"){  
                         console.log("delete");
                         result = _delete(message.url, message.id);
                     }
 
-                    else if (message.action === "get_intersection"){  // 取得 intersection array
+                    // 取得 intersection array
+                    else if (message.action === "get_intersection"){  
                         console.log("get_intersection");
                         if (message.url in all_intersection_id_array){
                             result = {result: all_intersection_id_array[message.url], success: true, action: "get_intersection"};
@@ -288,14 +298,14 @@ chrome.runtime.onConnect.addListener(
 
 
 /**
- * 
+ * 等待前端頁面跑好後, call content script 起來 init
  */
 chrome.webNavigation.onCompleted.addListener(
     async function call_content_script_init(){
         let [tab] = await chrome.tabs.query({active: true, lastFocusedWindow: true});
         await chrome.tabs.sendMessage(tab.id, {action: "init"});
     },
-    {hostContains: PCHOME_DOMAIN}
+    {hostContains: SETTING.pchome_domain}
 )
 
 
@@ -317,6 +327,8 @@ chrome.contextMenus.onClicked.addListener((info, tab)=>{
         return; 
     }
     console.log("產生報表");
+
+    // 取得當前頁面的 url
     let url = new URL(tab.url);
     let path_name = new URL(url).pathname.split("/");
     let url_id = path_name[path_name.length - 1];
@@ -324,14 +336,16 @@ chrome.contextMenus.onClicked.addListener((info, tab)=>{
     console.debug(`url: ${url}`);
     console.debug(`url_id: ${url_id}`);
 
+    // 建立 query
     let query = `${url_id}`;
     for (let i = 0; i < all_intersection_id_array[url].length; i = i + 1){
         let id = all_intersection_id_array[url][i];
         query += `,${id}`;
     }
 
+    // 建立新分頁到 Github Page 顯示
     chrome.tabs.create({
-        "url": `${GITHUB_PAGE_URL}?${QUERY_KEY}=${query}`
+        "url": `${SETTING.github_page_url}?${SETTING.query_key}=${query}`
     });
 });
 
