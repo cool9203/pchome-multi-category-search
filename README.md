@@ -4,7 +4,7 @@
 
 # 提供的版本
 
-1. [google-extension](https://chrome.google.com/webstore/detail/pchome-multi-category-sea/hpidccbaddecbdhgafchoeipopkhdkak?hl=zh-TW)
+1. [chrome-extension](https://chrome.google.com/webstore/detail/pchome-multi-category-sea/hpidccbaddecbdhgafchoeipopkhdkak?hl=zh-TW)
 2. [github-page](https://cool9203.github.io/pchome-multi-category-search/src/index.html)
 
 # 如何使用
