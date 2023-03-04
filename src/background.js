@@ -33,6 +33,9 @@ const PROD_REGEX = /\[.*\]/;
 // Program variable
 let data_cache = {};
 let all_intersection_id_array = {};
+const PCHOME_DOMAIN = "24h.pchome.com.tw";
+const GITHUB_PAGE_URL = "https://cool9203.github.io/pchome-multi-category-search/src/SearchResult.html";
+const QUERY_KEY = "intersection";
 
 
 /** 
@@ -245,28 +248,28 @@ function _delete(key, id){
  */ 
 chrome.runtime.onConnect.addListener(
     function(port) {
-        console.debug("Get connect");
+        console.log("Get connect");
         port.onMessage.addListener(
             async function(message){
                 let result = {success: false, action: message.action};
                 try{
                     if (message.action === "add"){  // 增加 id
-                        console.debug("add");
+                        console.log("add");
                         result = await _add(message.url, message.id);
                     }
 
                     else if (message.action === "get"){  // 取得結果
-                        console.debug("get");
+                        console.log("get");
                         result = _get(message.url);
                     }
 
                     else if (message.action === "delete"){  // 刪除 id
-                        console.debug("delete");
+                        console.log("delete");
                         result = _delete(message.url, message.id);
                     }
 
                     else if (message.action === "get_intersection"){  // 取得 intersection array
-                        console.debug("get_intersection");
+                        console.log("get_intersection");
                         if (message.url in all_intersection_id_array){
                             result = {result: all_intersection_id_array[message.url], success: true, action: "get_intersection"};
                         }else{
@@ -292,7 +295,7 @@ chrome.webNavigation.onCompleted.addListener(
         let [tab] = await chrome.tabs.query({active: true, lastFocusedWindow: true});
         await chrome.tabs.sendMessage(tab.id, {action: "init"});
     },
-    {hostContains: "24h.pchome.com.tw"}
+    {hostContains: PCHOME_DOMAIN}
 )
 
 
@@ -318,8 +321,8 @@ chrome.contextMenus.onClicked.addListener((info, tab)=>{
     let path_name = new URL(url).pathname.split("/");
     let url_id = path_name[path_name.length - 1];
     url = new URL(url.pathname, url.origin).href;
-    console.log(`url: ${url}`);
-    console.log(`url_id: ${url_id}`);
+    console.debug(`url: ${url}`);
+    console.debug(`url_id: ${url_id}`);
 
     let query = `${url_id}`;
     for (let i = 0; i < all_intersection_id_array[url].length; i = i + 1){
@@ -328,7 +331,7 @@ chrome.contextMenus.onClicked.addListener((info, tab)=>{
     }
 
     chrome.tabs.create({
-        "url": `https://cool9203.github.io/pchome-multi-category-search/src/SearchResult.html?intersection=${query}`
+        "url": `${GITHUB_PAGE_URL}?${QUERY_KEY}=${query}`
     });
 });
 
