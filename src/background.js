@@ -253,11 +253,11 @@ function _delete(key, id){
  * user script API event
  */ 
 chrome.runtime.onConnect.addListener(
-    function(port) {
+    function on_connect(port) {
         console.log("Get connect");
-        
+
         port.onMessage.addListener(
-            async function(message){
+            async function port_on_message(message){
                 let key = message.url;
                 let result = {success: false, action: message.action};
 

@@ -116,7 +116,7 @@ function recheck(all_id){
 /**
  * call 擴充功能的 API 的 on message event
  */
-PORT.onMessage.addListener(function(message) {
+PORT.onMessage.addListener(function port_on_message(message) {
     if (message.action === "get"){
         let result = message.result;
         run(result);
@@ -135,7 +135,7 @@ PORT.onMessage.addListener(function(message) {
  * 讓擴充功能的 background.js 確認頁面執行完沒, 執行完再 call content script init
  */
 chrome.runtime.onMessage.addListener(
-    function(request, sender, sendResponse) {
+    function on_message(request, sender, sendResponse) {
         if (request.action === "init"){
             setTimeout(init, DELAY);
         }
