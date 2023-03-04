@@ -8,7 +8,7 @@ const SETTING = {
         id: "GenerateMultiCategorySearchPage",
         title: "PchomeMultiCategorySearch: 生成報表",
     },
-    pchome_domain: "24h.pchome.com.tw",
+    pchome_domain: "https://24h.pchome.com.tw",
     github_page_url: "https://cool9203.github.io/pchome-multi-category-search/src/SearchResult.html",
     query_key: "intersection",
 }
@@ -255,33 +255,36 @@ function _delete(key, id){
 chrome.runtime.onConnect.addListener(
     function(port) {
         console.log("Get connect");
+        
         port.onMessage.addListener(
             async function(message){
+                let key = message.url;
                 let result = {success: false, action: message.action};
+
                 try{
                     // 增加 id
                     if (message.action === "add"){  
                         console.log("add");
-                        result = await _add(message.url, message.id);
+                        result = await _add(key, message.id);
                     }
 
                     // 取得結果
                     else if (message.action === "get"){  
                         console.log("get");
-                        result = _get(message.url);
+                        result = _get(key);
                     }
 
                     // 刪除 id
                     else if (message.action === "delete"){  
                         console.log("delete");
-                        result = _delete(message.url, message.id);
+                        result = _delete(key, message.id);
                     }
 
                     // 取得 intersection array
                     else if (message.action === "get_intersection"){  
                         console.log("get_intersection");
-                        if (message.url in all_intersection_id_array){
-                            result = {result: all_intersection_id_array[message.url], success: true, action: "get_intersection"};
+                        if (key in all_intersection_id_array){
+                            result = {result: all_intersection_id_array[key], success: true, action: "get_intersection"};
                         }else{
                             result = {result: [], success: true, action: "get_intersection"};
                         }
@@ -301,11 +304,14 @@ chrome.runtime.onConnect.addListener(
  * 等待前端頁面跑好後, call content script 起來 init
  */
 chrome.webNavigation.onCompleted.addListener(
-    async function call_content_script_init(){
-        let [tab] = await chrome.tabs.query({active: true, lastFocusedWindow: true});
-        await chrome.tabs.sendMessage(tab.id, {action: "init"});
-    },
-    {hostContains: SETTING.pchome_domain}
+    async function call_content_script_init(details){
+        if (details.url.indexOf(SETTING.pchome_domain) != -1){
+            let [tab] = await chrome.tabs.query({active: true, lastFocusedWindow: true});
+            if (tab !== undefined){
+                await chrome.tabs.sendMessage(tab.id, {action: "init"});
+            }
+        }
+    }
 )
 
 
@@ -350,4 +356,20 @@ chrome.contextMenus.onClicked.addListener((info, tab)=>{
 });
 
 
-// TODO: Tabs close event 需要清除data_cache
+/**
+ * 當離開 pchome 網頁後, 擴充套件將會清除所有暫存資料
+ */
+chrome.tabs.onRemoved.addListener(
+    async function tab_close(tab_id, remove_info){
+        let tabs = await chrome.tabs.query({status: "complete", url: `${SETTING.pchome_domain}/*`});
+        if (tabs.length == 0){
+            console.log("clear all data");
+            for (let key in data_cache){
+                delete data_cache[key];
+            }
+            for (let key in all_intersection_id_array){
+                delete all_intersection_id_array[key];
+            }
+        }
+    }
+)
